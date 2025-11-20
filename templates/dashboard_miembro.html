@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block title %}Mis Tareas{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h2 class="text-white"><i class="bi bi-clipboard-check"></i> Mis Tareas</h2>
+        <p class="text-white-50">Gestiona tu lista de pendientes</p>
+    </div>
+</div>
+
+<!-- Estadísticas -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="bi bi-clock-history text-warning" style="font-size: 2.5rem;"></i>
+                <h3 class="mt-2">{{ mis_tareas|selectattr('estado', 'equalto', 'pendiente')|list|length }}</h3>
+                <p class="text-muted mb-0">Pendientes</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="bi bi-play-circle text-info" style="font-size: 2.5rem;"></i>
+                <h3 class="mt-2">{{ mis_tareas|selectattr('estado', 'equalto', 'en_progreso')|list|length }}</h3>
+                <p class="text-muted mb-0">En Progreso</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="bi bi-check-circle text-success" style="font-size: 2.5rem;"></i>
+                <h3 class="mt-2">{{ mis_tareas|selectattr('estado', 'equalto', 'completada')|list|length }}</h3>
+                <p class="text-muted mb-0">Completadas</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lista de Tareas -->
+<div class="row">
+    {% if mis_tareas %}
+        <!-- Pendientes -->
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h6 class="mb-0"><i class="bi bi-clock-history"></i> Pendientes</h6>
+                </div>
+                <div class="card-body p-2">
+                    {% for tarea in mis_tareas if tarea.estado == 'pendiente' %}
+                    <div class="card task-card task-pendiente mb-2">
+                        <div class="card-body p-3">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 class="mb-0">{{ tarea.titulo }}</h6>
+                                {% if tarea.prioridad %}
+                                <span class="badge bg-{{ 'success' if tarea.prioridad == 'baja' else 'warning' if tarea.prioridad == 'media' else 'danger' if tarea.prioridad == 'alta' else 'dark' }}">
+                                    {{ '🟢' if tarea.prioridad == 'baja' else '🟡' if tarea.prioridad == 'media' else '🟠' if tarea.prioridad == 'alta' else '🔴' }}
+                                </span>
+                                {% endif %}
+                            </div>
+                            <p class="text-muted small mb-2">{{ tarea.descripcion or 'Sin descripción' }}</p>
+                            {% if tarea.archivo %}
+                            <div class="mb-2">
+                                <a href="{{ url_for('uploaded_file', filename=tarea.archivo.split('/')[-1]) }}" 
+                                   class="btn btn-sm btn-outline-secondary" target="_blank">
+                                    <i class="bi bi-paperclip"></i> Ver archivo
+                                </a>
+                            </div>
+                            {% endif %}
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted">
+                                    <i class="bi bi-person"></i> {{ tarea.creador.nombre }}
+                                </small>
+                                <form method="POST" action="{{ url_for('actualizar_estado_tarea', id=tarea.id) }}" style="display: inline;">
+                                    <input type="hidden" name="estado" value="en_progreso">
+                                    <button type="submit" class="btn btn-sm btn-info" title="Iniciar">
+                                        <i class="bi bi-play-fill"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center py-3 mb-0">
+                        <i class="bi bi-check-circle"></i><br>
+                        No hay tareas pendientes
+                    </p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- En Progreso -->
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0"><i class="bi bi-play-circle"></i> En Progreso</h6>
+                </div>
+                <div class="card-body p-2">
+                    {% for tarea in mis_tareas if tarea.estado == 'en_progreso' %}
+                    <div class="card task-card task-en_progreso mb-2">
+                        <div class="card-body p-3">
+                            <h6 class="mb-2">{{ tarea.titulo }}</h6>
+                            <p class="text-muted small mb-2">{{ tarea.descripcion or 'Sin descripción' }}</p>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted">
+                                    <i class="bi bi-person"></i> {{ tarea.creador.nombre }}
+                                </small>
+                                <div>
+                                    <form method="POST" action="{{ url_for('actualizar_estado_tarea', id=tarea.id) }}" style="display: inline;">
+                                        <input type="hidden" name="estado" value="pendiente">
+                                        <button type="submit" class="btn btn-sm btn-warning" title="Volver a pendiente">
+                                            <i class="bi bi-arrow-left"></i>
+                                        </button>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('actualizar_estado_tarea', id=tarea.id) }}" style="display: inline;">
+                                        <input type="hidden" name="estado" value="completada">
+                                        <button type="submit" class="btn btn-sm btn-success" title="Completar">
+                                            <i class="bi bi-check-lg"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center py-3 mb-0">
+                        <i class="bi bi-inbox"></i><br>
+                        No hay tareas en progreso
+                    </p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Completadas -->
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h6 class="mb-0"><i class="bi bi-check-circle"></i> Completadas</h6>
+                </div>
+                <div class="card-body p-2">
+                    {% for tarea in mis_tareas if tarea.estado == 'completada' %}
+                    <div class="card task-card task-completada mb-2">
+                        <div class="card-body p-3">
+                            <h6 class="mb-2 text-decoration-line-through">{{ tarea.titulo }}</h6>
+                            <p class="text-muted small mb-2">{{ tarea.descripcion or 'Sin descripción' }}</p>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted">
+                                    <i class="bi bi-calendar-check"></i> 
+                                    {% if tarea.fecha_completada %}
+                                        {{ tarea.fecha_completada.strftime('%d/%m/%Y') }}
+                                    {% endif %}
+                                </small>
+                                <form method="POST" action="{{ url_for('actualizar_estado_tarea', id=tarea.id) }}" style="display: inline;">
+                                    <input type="hidden" name="estado" value="en_progreso">
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary" title="Reabrir">
+                                        <i class="bi bi-arrow-counterclockwise"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center py-3 mb-0">
+                        <i class="bi bi-hourglass"></i><br>
+                        No hay tareas completadas
+                    </p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    {% else %}
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="bi bi-inbox text-muted" style="font-size: 4rem;"></i>
+                <h4 class="mt-3 text-muted">No tienes tareas asignadas</h4>
+                <p class="text-muted">Tu líder de equipo te asignará tareas próximamente</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

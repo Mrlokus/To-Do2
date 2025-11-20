@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Nueva Tarea{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-plus-circle"></i> Crear Nueva Tarea</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('crear_tarea') }}" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="titulo" class="form-label">Título de la Tarea *</label>
+                        <input type="text" class="form-control" id="titulo" name="titulo" required 
+                               placeholder="Ej: Revisar documentación del proyecto" maxlength="200">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="descripcion" class="form-label">Descripción</label>
+                        <textarea class="form-control" id="descripcion" name="descripcion" rows="4" 
+                                  placeholder="Describe los detalles de la tarea..."></textarea>
+                        <small class="text-muted">Opcional: Agrega detalles adicionales sobre la tarea</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="prioridad" class="form-label">Prioridad *</label>
+                        <select class="form-select" id="prioridad" name="prioridad" required>
+                            <option value="baja">🟢 Baja</option>
+                            <option value="media" selected>🟡 Media</option>
+                            <option value="alta">🟠 Alta</option>
+                            <option value="urgente">🔴 Urgente</option>
+                        </select>
+                        <small class="text-muted">Selecciona la prioridad de la tarea</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="archivo" class="form-label">Archivo Adjunto</label>
+                        <input type="file" class="form-control" id="archivo" name="archivo" 
+                               accept=".png,.jpg,.jpeg,.gif,.pdf,.doc,.docx,.txt,.zip,.rar">
+                        <small class="text-muted">
+                            Opcional: Adjunta una imagen o documento (máx. 16MB)
+                            <br>Formatos: PNG, JPG, GIF, PDF, DOC, DOCX, TXT, ZIP, RAR
+                        </small>
+                    </div>
+
+                    {% if session.role == 'lider' %}
+                    <div class="mb-4">
+                        <label for="assigned_to" class="form-label">Asignar a</label>
+                        <select class="form-select" id="assigned_to" name="assigned_to">
+                            <option value="">Sin asignar (solo yo la veré)</option>
+                            {% for miembro in miembros %}
+                            <option value="{{ miembro.id }}">{{ miembro.nombre }} (@{{ miembro.username }})</option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">Selecciona un miembro del equipo para asignar esta tarea</small>
+                    </div>
+                    {% endif %}
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Crear Tarea
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Información adicional para miembros -->
+        {% if session.role == 'miembro' %}
+        <div class="alert alert-info mt-3">
+            <i class="bi bi-info-circle"></i>
+            <strong>Nota:</strong> Las tareas que crees se asignarán automáticamente a ti y aparecerán en tu lista de pendientes.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

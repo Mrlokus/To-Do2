@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Líder{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <h2 class="text-white"><i class="bi bi-speedometer2"></i> Panel de Control</h2>
+        <p class="text-white-50">Gestiona las tareas de tu equipo</p>
+    </div>
+</div>
+
+<!-- Estadísticas -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="bi bi-list-task text-primary" style="font-size: 2rem;"></i>
+                <h3 class="mt-2">{{ mis_tareas|length }}</h3>
+                <p class="text-muted mb-0">Tareas Creadas</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="bi bi-clock-history text-warning" style="font-size: 2rem;"></i>
+                <h3 class="mt-2">{{ mis_tareas|selectattr('estado', 'equalto', 'pendiente')|list|length }}</h3>
+                <p class="text-muted mb-0">Pendientes</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="bi bi-play-circle text-info" style="font-size: 2rem;"></i>
+                <h3 class="mt-2">{{ mis_tareas|selectattr('estado', 'equalto', 'en_progreso')|list|length }}</h3>
+                <p class="text-muted mb-0">En Progreso</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="bi bi-check-circle text-success" style="font-size: 2rem;"></i>
+                <h3 class="mt-2">{{ mis_tareas|selectattr('estado', 'equalto', 'completada')|list|length }}</h3>
+                <p class="text-muted mb-0">Completadas</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tareas Asignadas a Mí -->
+{% if tareas_asignadas %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-person-check"></i> Mis Tareas Asignadas</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for tarea in tareas_asignadas %}
+                    <div class="col-md-6 mb-3">
+                        <div class="card task-card task-{{ tarea.estado }}">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div>
+                                        <h6 class="mb-0">{{ tarea.titulo }}</h6>
+                                        {% if tarea.prioridad %}
+                                        <span class="badge bg-{{ 'success' if tarea.prioridad == 'baja' else 'warning' if tarea.prioridad == 'media' else 'danger' if tarea.prioridad == 'alta' else 'dark' }} mt-1">
+                                            {{ '🟢' if tarea.prioridad == 'baja' else '🟡' if tarea.prioridad == 'media' else '🟠' if tarea.prioridad == 'alta' else '🔴' }}
+                                            {{ tarea.prioridad|title }}
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                    <span class="badge bg-{{ 'warning' if tarea.estado == 'pendiente' else 'info' if tarea.estado == 'en_progreso' else 'success' }}">
+                                        {{ tarea.estado|replace('_', ' ')|title }}
+                                    </span>
+                                </div>
+                                <p class="text-muted small mb-2">{{ tarea.descripcion or 'Sin descripción' }}</p>
+                                {% if tarea.archivo %}
+                                <div class="mb-2">
+                                    <a href="{{ url_for('uploaded_file', filename=tarea.archivo.split('/')[-1]) }}" 
+                                       class="btn btn-sm btn-outline-primary" target="_blank">
+                                        <i class="bi bi-paperclip"></i> {{ tarea.nombre_archivo }}
+                                    </a>
+                                </div>
+                                {% endif %}
+                                <small class="text-muted">
+                                    <i class="bi bi-calendar"></i> {{ tarea.fecha_creacion.strftime('%d/%m/%Y') }}
+                                </small>
+                                <form method="POST" action="{{ url_for('actualizar_estado_tarea', id=tarea.id) }}" class="mt-2">
+                                    <select name="estado" class="form-select form-select-sm" onchange="this.form.submit()">
+                                        <option value="pendiente" {% if tarea.estado == 'pendiente' %}selected{% endif %}>Pendiente</option>
+                                        <option value="en_progreso" {% if tarea.estado == 'en_progreso' %}selected{% endif %}>En Progreso</option>
+                                        <option value="completada" {% if tarea.estado == 'completada' %}selected{% endif %}>Completada</option>
+                                    </select>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Tareas Creadas por Mí -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-list-check"></i> Tareas Creadas por Mí</h5>
+                <a href="{{ url_for('crear_tarea') }}" class="btn btn-primary btn-sm">
+                    <i class="bi bi-plus-circle"></i> Nueva Tarea
+                </a>
+            </div>
+            <div class="card-body">
+                {% if mis_tareas %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Tarea</th>
+                                <th>Asignada a</th>
+                                <th>Estado</th>
+                                <th>Fecha</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for tarea in mis_tareas %}
+                            <tr>
+                                <td>
+                                    <strong>{{ tarea.titulo }}</strong><br>
+                                    <small class="text-muted">{{ tarea.descripcion or 'Sin descripción' }}</small>
+                                </td>
+                                <td>
+                                    {% if tarea.asignado %}
+                                        <span class="badge bg-secondary">{{ tarea.asignado.nombre }}</span>
+                                    {% else %}
+                                        <span class="text-muted">Sin asignar</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-{{ 'warning' if tarea.estado == 'pendiente' else 'info' if tarea.estado == 'en_progreso' else 'success' }}">
+                                        {{ tarea.estado|replace('_', ' ')|title }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <small>{{ tarea.fecha_creacion.strftime('%d/%m/%Y') }}</small>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#reasignarModal{{ tarea.id }}">
+                                            <i class="bi bi-person-plus"></i>
+                                        </button>
+                                        <form method="POST" action="{{ url_for('eliminar_tarea', id=tarea.id) }}" style="display: inline;" onsubmit="return confirm('¿Eliminar esta tarea?')">
+                                            <button type="submit" class="btn btn-outline-danger">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- Modal para reasignar -->
+                            <div class="modal fade" id="reasignarModal{{ tarea.id }}" tabindex="-1">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">Reasignar Tarea</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <form method="POST" action="{{ url_for('reasignar_tarea', id=tarea.id) }}">
+                                            <div class="modal-body">
+                                                <p><strong>{{ tarea.titulo }}</strong></p>
+                                                <div class="mb-3">
+                                                    <label class="form-label">Asignar a:</label>
+                                                    <select name="assigned_to" class="form-select" required>
+                                                        <option value="">Seleccionar miembro...</option>
+                                                        {% for miembro in miembros %}
+                                                        <option value="{{ miembro.id }}" {% if tarea.assigned_to == miembro.id %}selected{% endif %}>
+                                                            {{ miembro.nombre }}
+                                                        </option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                <button type="submit" class="btn btn-primary">Reasignar</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i>
+                    <p class="text-muted mt-3">No has creado tareas aún</p>
+                    <a href="{{ url_for('crear_tarea') }}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> Crear Primera Tarea
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

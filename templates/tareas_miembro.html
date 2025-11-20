@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block title %}Tareas de {{ miembro.nombre }}{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}" class="text-white">Dashboard</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('tareas_por_miembro') }}" class="text-white">Equipo</a></li>
+                <li class="breadcrumb-item active text-white-50">{{ miembro.nombre }}</li>
+            </ol>
+        </nav>
+        <h2 class="text-white">
+            <i class="bi bi-person-circle"></i> {{ miembro.nombre }}
+        </h2>
+        <p class="text-white-50">@{{ miembro.username }}</p>
+    </div>
+</div>
+
+<!-- Estadísticas -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="bi bi-list-task text-primary" style="font-size: 2rem;"></i>
+                <h3 class="mt-2">{{ tareas|length }}</h3>
+                <p class="text-muted mb-0">Total de Tareas</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="bi bi-clock-history text-warning" style="font-size: 2rem;"></i>
+                <h3 class="mt-2">{{ tareas|selectattr('estado', 'equalto', 'pendiente')|list|length }}</h3>
+                <p class="text-muted mb-0">Pendientes</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="bi bi-play-circle text-info" style="font-size: 2rem;"></i>
+                <h3 class="mt-2">{{ tareas|selectattr('estado', 'equalto', 'en_progreso')|list|length }}</h3>
+                <p class="text-muted mb-0">En Progreso</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="bi bi-check-circle text-success" style="font-size: 2rem;"></i>
+                <h3 class="mt-2">{{ tareas|selectattr('estado', 'equalto', 'completada')|list|length }}</h3>
+                <p class="text-muted mb-0">Completadas</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lista de todas las tareas -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-list-check"></i> Todas las Tareas</h5>
+            </div>
+            <div class="card-body">
+                {% if tareas %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Tarea</th>
+                                <th>Descripción</th>
+                                <th>Estado</th>
+                                <th>Fecha Creación</th>
+                                <th>Fecha Completada</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for tarea in tareas|sort(attribute='fecha_creacion', reverse=true) %}
+                            <tr>
+                                <td><strong>{{ tarea.titulo }}</strong></td>
+                                <td>
+                                    <small class="text-muted">
+                                        {{ tarea.descripcion[:50] if tarea.descripcion else 'Sin descripción' }}
+                                        {% if tarea.descripcion and tarea.descripcion|length > 50 %}...{% endif %}
+                                    </small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-{{ 'warning' if tarea.estado == 'pendiente' else 'info' if tarea.estado == 'en_progreso' else 'success' }}">
+                                        {{ tarea.estado|replace('_', ' ')|title }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <small>{{ tarea.fecha_creacion.strftime('%d/%m/%Y %H:%M') }}</small>
+                                </td>
+                                <td>
+                                    {% if tarea.fecha_completada %}
+                                        <small class="text-success">
+                                            <i class="bi bi-check-circle"></i>
+                                            {{ tarea.fecha_completada.strftime('%d/%m/%Y %H:%M') }}
+                                        </small>
+                                    {% else %}
+                                        <small class="text-muted">-</small>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Filtros rápidos -->
+                <div class="mt-4">
+                    <h6>Filtros Rápidos:</h6>
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-sm btn-outline-primary active" onclick="filtrarTareas('todas')">
+                            Todas ({{ tareas|length }})
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-warning" onclick="filtrarTareas('pendiente')">
+                            Pendientes ({{ tareas|selectattr('estado', 'equalto', 'pendiente')|list|length }})
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-info" onclick="filtrarTareas('en_progreso')">
+                            En Progreso ({{ tareas|selectattr('estado', 'equalto', 'en_progreso')|list|length }})
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-success" onclick="filtrarTareas('completada')">
+                            Completadas ({{ tareas|selectattr('estado', 'equalto', 'completada')|list|length }})
+                        </button>
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-inbox text-muted" style="font-size: 4rem;"></i>
+                    <h4 class="mt-3 text-muted">No hay tareas asignadas</h4>
+                    <p class="text-muted">Este miembro aún no tiene tareas asignadas</p>
+                    <a href="{{ url_for('crear_tarea') }}" class="btn btn-primary mt-2">
+                        <i class="bi bi-plus-circle"></i> Asignar Primera Tarea
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function filtrarTareas(estado) {
+    const filas = document.querySelectorAll('tbody tr');
+    const botones = document.querySelectorAll('.btn-group button');
+    
+    // Actualizar botones activos
+    botones.forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    filas.forEach(fila => {
+        const badge = fila.querySelector('.badge');
+        if (!badge) return;
+        
+        const estadoFila = badge.textContent.trim().toLowerCase().replace(' ', '_');
+        
+        if (estado === 'todas') {
+            fila.style.display = '';
+        } else if (estadoFila === estado) {
+            fila.style.display = '';
+        } else {
+            fila.style.display = 'none';
+        }
+    });
+}
+</script>
+{% endblock %}
