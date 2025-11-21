@@ -24,6 +24,10 @@ db = SQLAlchemy(app)
 
 # ==================== MODELOS ====================
 
+def allowed_file(filename):
+    """Verifica si el archivo tiene una extensión permitida"""
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
@@ -38,6 +42,9 @@ class Task(db.Model):
     titulo = db.Column(db.String(200), nullable=False)
     descripcion = db.Column(db.Text)
     estado = db.Column(db.String(20), default='pendiente')  # 'pendiente', 'en_progreso', 'completada'
+    prioridad = db.Column(db.String(20), default='media')  # 'baja', 'media', 'alta', 'urgente'
+    archivo = db.Column(db.String(300))  # Ruta del archivo adjunto
+    nombre_archivo = db.Column(db.String(300))  # Nombre original del archivo
     created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     assigned_to = db.Column(db.Integer, db.ForeignKey('user.id'))
     fecha_creacion = db.Column(db.DateTime, default=datetime.utcnow)
@@ -131,7 +138,30 @@ def crear_tarea():
     if request.method == 'POST':
         titulo = request.form.get('titulo')
         descripcion = request.form.get('descripcion')
+        prioridad = request.form.get('prioridad', 'media')
         assigned_to = request.form.get('assigned_to')
+        
+        # Manejar archivo adjunto
+        archivo_guardado = None
+        nombre_archivo = None
+        
+        if 'archivo' in request.files:
+            file = request.files['archivo']
+            if file and file.filename != '' and allowed_file(file.filename):
+                # Crear nombre único para el archivo
+                filename = secure_filename(file.filename)
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                unique_filename = f"{timestamp}_{filename}"
+                
+                # Guardar archivo
+                archivo_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+                file.save(archivo_path)
+                
+                # Guardar solo el nombre del archivo, no la ruta completa
+                archivo_guardado = unique_filename
+                nombre_archivo = filename
+            elif file and file.filename != '' and not allowed_file(file.filename):
+                flash('Tipo de archivo no permitido. Usa: png, jpg, jpeg, gif, pdf, doc, docx, txt, zip, rar', 'warning')
         
         # Para miembros, auto-asignar la tarea a ellos mismos si no especifican otro
         user = User.query.get(session['user_id'])
@@ -145,6 +175,9 @@ def crear_tarea():
         nueva_tarea = Task(
             titulo=titulo,
             descripcion=descripcion,
+            prioridad=prioridad,
+            archivo=archivo_guardado,
+            nombre_archivo=nombre_archivo,
             created_by=session['user_id'],
             assigned_to=assigned_to_id
         )
@@ -242,6 +275,103 @@ def reasignar_tarea(id):
         flash('Tarea reasignada exitosamente', 'success')
     
     return redirect(url_for('dashboard'))
+
+# ==================== MANEJO DE ARCHIVOS ====================
+
+@app.route('/uploads/<filename>')
+@login_required
+def uploaded_file(filename):
+    """Sirve archivos subidos"""
+    try:
+        return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+    except FileNotFoundError:
+        flash('Archivo no encontrado', 'danger')
+        return redirect(url_for('dashboard'))
+
+@app.route('/tarea/<int:id>/eliminar-archivo', methods=['POST'])
+@login_required
+def eliminar_archivo(id):
+    """Elimina el archivo adjunto de una tarea"""
+    tarea = Task.query.get_or_404(id)
+    user = User.query.get(session['user_id'])
+    
+    # Verificar permisos
+    if tarea.created_by != user.id and user.role != 'lider':
+        flash('No tienes permisos para eliminar este archivo', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    # Eliminar archivo del sistema
+    if tarea.archivo:
+        archivo_path = os.path.join(app.config['UPLOAD_FOLDER'], tarea.archivo)
+        if os.path.exists(archivo_path):
+            os.remove(archivo_path)
+    
+    # Actualizar base de datos
+    tarea.archivo = None
+    tarea.nombre_archivo = None
+    db.session.commit()
+    
+    flash('Archivo eliminado', 'success')
+    return redirect(url_for('detalle_tarea', id=id))
+
+@app.route('/tarea/<int:id>/detalle')
+@login_required
+def detalle_tarea(id):
+    """Vista detallada de una tarea"""
+    tarea = Task.query.get_or_404(id)
+    user = User.query.get(session['user_id'])
+    
+    # Verificar permisos de acceso
+    if user.role != 'lider' and tarea.assigned_to != user.id and tarea.created_by != user.id:
+        flash('No tienes permisos para ver esta tarea', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    # Si es líder, obtener lista de miembros para reasignar
+    miembros = User.query.filter_by(role='miembro').all() if user.role == 'lider' else []
+    
+    return render_template('detalle_tarea.html', tarea=tarea, miembros=miembros)
+
+@app.route('/tarea/<int:id>/editar', methods=['POST'])
+@login_required
+def editar_tarea(id):
+    """Edita una tarea existente"""
+    tarea = Task.query.get_or_404(id)
+    user = User.query.get(session['user_id'])
+    
+    # Verificar permisos
+    if tarea.created_by != user.id and user.role != 'lider':
+        flash('No tienes permisos para editar esta tarea', 'danger')
+        return redirect(url_for('detalle_tarea', id=id))
+    
+    # Actualizar campos
+    tarea.titulo = request.form.get('titulo')
+    tarea.descripcion = request.form.get('descripcion')
+    tarea.prioridad = request.form.get('prioridad', 'media')
+    
+    # Manejar nuevo archivo adjunto
+    if 'archivo' in request.files:
+        file = request.files['archivo']
+        if file and file.filename != '' and allowed_file(file.filename):
+            # Eliminar archivo anterior si existe
+            if tarea.archivo:
+                archivo_path_old = os.path.join(app.config['UPLOAD_FOLDER'], tarea.archivo)
+                if os.path.exists(archivo_path_old):
+                    os.remove(archivo_path_old)
+            
+            # Guardar nuevo archivo
+            filename = secure_filename(file.filename)
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            unique_filename = f"{timestamp}_{filename}"
+            archivo_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+            file.save(archivo_path)
+            
+            # Guardar solo el nombre del archivo
+            tarea.archivo = unique_filename
+            tarea.nombre_archivo = filename
+    
+    db.session.commit()
+    flash('Tarea actualizada exitosamente', 'success')
+    return redirect(url_for('detalle_tarea', id=id))
 
 # ==================== INICIALIZACIÓN ====================
 

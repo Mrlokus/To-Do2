@@ -55,32 +55,41 @@
                     <div class="card task-card task-pendiente mb-2">
                         <div class="card-body p-3">
                             <div class="d-flex justify-content-between align-items-start mb-2">
-                                <h6 class="mb-0">{{ tarea.titulo }}</h6>
+                                <h6 class="mb-0">
+                                    <a href="{{ url_for('detalle_tarea', id=tarea.id) }}" 
+                                       class="text-decoration-none text-dark">
+                                        {{ tarea.titulo }}
+                                    </a>
+                                </h6>
                                 {% if tarea.prioridad %}
                                 <span class="badge bg-{{ 'success' if tarea.prioridad == 'baja' else 'warning' if tarea.prioridad == 'media' else 'danger' if tarea.prioridad == 'alta' else 'dark' }}">
                                     {{ '🟢' if tarea.prioridad == 'baja' else '🟡' if tarea.prioridad == 'media' else '🟠' if tarea.prioridad == 'alta' else '🔴' }}
                                 </span>
                                 {% endif %}
                             </div>
-                            <p class="text-muted small mb-2">{{ tarea.descripcion or 'Sin descripción' }}</p>
+                            <p class="text-muted small mb-2">{{ tarea.descripcion[:60] if tarea.descripcion else 'Sin descripción' }}{% if tarea.descripcion and tarea.descripcion|length > 60 %}...{% endif %}</p>
                             {% if tarea.archivo %}
                             <div class="mb-2">
-                                <a href="{{ url_for('uploaded_file', filename=tarea.archivo.split('/')[-1]) }}" 
-                                   class="btn btn-sm btn-outline-secondary" target="_blank">
-                                    <i class="bi bi-paperclip"></i> Ver archivo
-                                </a>
+                                <span class="badge bg-light text-dark">
+                                    <i class="bi bi-paperclip"></i> Adjunto
+                                </span>
                             </div>
                             {% endif %}
                             <div class="d-flex justify-content-between align-items-center">
                                 <small class="text-muted">
                                     <i class="bi bi-person"></i> {{ tarea.creador.nombre }}
                                 </small>
-                                <form method="POST" action="{{ url_for('actualizar_estado_tarea', id=tarea.id) }}" style="display: inline;">
-                                    <input type="hidden" name="estado" value="en_progreso">
-                                    <button type="submit" class="btn btn-sm btn-info" title="Iniciar">
-                                        <i class="bi bi-play-fill"></i>
-                                    </button>
-                                </form>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('detalle_tarea', id=tarea.id) }}" class="btn btn-outline-secondary" title="Ver detalle">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <form method="POST" action="{{ url_for('actualizar_estado_tarea', id=tarea.id) }}" style="display: inline;">
+                                        <input type="hidden" name="estado" value="en_progreso">
+                                        <button type="submit" class="btn btn-info" title="Iniciar">
+                                            <i class="bi bi-play-fill"></i>
+                                        </button>
+                                    </form>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -104,22 +113,44 @@
                     {% for tarea in mis_tareas if tarea.estado == 'en_progreso' %}
                     <div class="card task-card task-en_progreso mb-2">
                         <div class="card-body p-3">
-                            <h6 class="mb-2">{{ tarea.titulo }}</h6>
-                            <p class="text-muted small mb-2">{{ tarea.descripcion or 'Sin descripción' }}</p>
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 class="mb-0">
+                                    <a href="{{ url_for('detalle_tarea', id=tarea.id) }}" 
+                                       class="text-decoration-none text-dark">
+                                        {{ tarea.titulo }}
+                                    </a>
+                                </h6>
+                                {% if tarea.prioridad %}
+                                <span class="badge bg-{{ 'success' if tarea.prioridad == 'baja' else 'warning' if tarea.prioridad == 'media' else 'danger' if tarea.prioridad == 'alta' else 'dark' }}">
+                                    {{ '🟢' if tarea.prioridad == 'baja' else '🟡' if tarea.prioridad == 'media' else '🟠' if tarea.prioridad == 'alta' else '🔴' }}
+                                </span>
+                                {% endif %}
+                            </div>
+                            <p class="text-muted small mb-2">{{ tarea.descripcion[:60] if tarea.descripcion else 'Sin descripción' }}{% if tarea.descripcion and tarea.descripcion|length > 60 %}...{% endif %}</p>
+                            {% if tarea.archivo %}
+                            <div class="mb-2">
+                                <span class="badge bg-light text-dark">
+                                    <i class="bi bi-paperclip"></i> Adjunto
+                                </span>
+                            </div>
+                            {% endif %}
                             <div class="d-flex justify-content-between align-items-center">
                                 <small class="text-muted">
                                     <i class="bi bi-person"></i> {{ tarea.creador.nombre }}
                                 </small>
-                                <div>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('detalle_tarea', id=tarea.id) }}" class="btn btn-outline-secondary" title="Ver detalle">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
                                     <form method="POST" action="{{ url_for('actualizar_estado_tarea', id=tarea.id) }}" style="display: inline;">
                                         <input type="hidden" name="estado" value="pendiente">
-                                        <button type="submit" class="btn btn-sm btn-warning" title="Volver a pendiente">
+                                        <button type="submit" class="btn btn-warning" title="Volver a pendiente">
                                             <i class="bi bi-arrow-left"></i>
                                         </button>
                                     </form>
                                     <form method="POST" action="{{ url_for('actualizar_estado_tarea', id=tarea.id) }}" style="display: inline;">
                                         <input type="hidden" name="estado" value="completada">
-                                        <button type="submit" class="btn btn-sm btn-success" title="Completar">
+                                        <button type="submit" class="btn btn-success" title="Completar">
                                             <i class="bi bi-check-lg"></i>
                                         </button>
                                     </form>
@@ -147,8 +178,27 @@
                     {% for tarea in mis_tareas if tarea.estado == 'completada' %}
                     <div class="card task-card task-completada mb-2">
                         <div class="card-body p-3">
-                            <h6 class="mb-2 text-decoration-line-through">{{ tarea.titulo }}</h6>
-                            <p class="text-muted small mb-2">{{ tarea.descripcion or 'Sin descripción' }}</p>
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 class="mb-0">
+                                    <a href="{{ url_for('detalle_tarea', id=tarea.id) }}" 
+                                       class="text-decoration-none text-muted text-decoration-line-through">
+                                        {{ tarea.titulo }}
+                                    </a>
+                                </h6>
+                                {% if tarea.prioridad %}
+                                <span class="badge bg-secondary">
+                                    {{ '🟢' if tarea.prioridad == 'baja' else '🟡' if tarea.prioridad == 'media' else '🟠' if tarea.prioridad == 'alta' else '🔴' }}
+                                </span>
+                                {% endif %}
+                            </div>
+                            <p class="text-muted small mb-2">{{ tarea.descripcion[:60] if tarea.descripcion else 'Sin descripción' }}{% if tarea.descripcion and tarea.descripcion|length > 60 %}...{% endif %}</p>
+                            {% if tarea.archivo %}
+                            <div class="mb-2">
+                                <span class="badge bg-light text-dark">
+                                    <i class="bi bi-paperclip"></i> Adjunto
+                                </span>
+                            </div>
+                            {% endif %}
                             <div class="d-flex justify-content-between align-items-center">
                                 <small class="text-muted">
                                     <i class="bi bi-calendar-check"></i> 
@@ -156,12 +206,17 @@
                                         {{ tarea.fecha_completada.strftime('%d/%m/%Y') }}
                                     {% endif %}
                                 </small>
-                                <form method="POST" action="{{ url_for('actualizar_estado_tarea', id=tarea.id) }}" style="display: inline;">
-                                    <input type="hidden" name="estado" value="en_progreso">
-                                    <button type="submit" class="btn btn-sm btn-outline-secondary" title="Reabrir">
-                                        <i class="bi bi-arrow-counterclockwise"></i>
-                                    </button>
-                                </form>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('detalle_tarea', id=tarea.id) }}" class="btn btn-outline-secondary" title="Ver detalle">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <form method="POST" action="{{ url_for('actualizar_estado_tarea', id=tarea.id) }}" style="display: inline;">
+                                        <input type="hidden" name="estado" value="en_progreso">
+                                        <button type="submit" class="btn btn-outline-secondary" title="Reabrir">
+                                            <i class="bi bi-arrow-counterclockwise"></i>
+                                        </button>
+                                    </form>
+                                </div>
                             </div>
                         </div>
                     </div>

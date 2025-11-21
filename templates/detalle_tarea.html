@@ -1,0 +1,349 @@
+{% extends "base.html" %}
+
+{% block title %}{{ tarea.titulo }} - Detalle{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb bg-transparent">
+                <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}" class="text-white text-decoration-none">Dashboard</a></li>
+                <li class="breadcrumb-item active text-white-50">Detalle de Tarea</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Columna Principal - Información de la Tarea -->
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-clipboard-check fs-5"></i>
+                    <h5 class="mb-0">Información de la Tarea</h5>
+                </div>
+                <div>
+                    <!-- Botón Editar (solo creador o líder) -->
+                    {% if session.user_id == tarea.created_by or session.role == 'lider' %}
+                    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editarModal">
+                        <i class="bi bi-pencil"></i> Editar
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-body p-4">
+                <!-- Título y Estado -->
+                <div class="d-flex justify-content-between align-items-start mb-4">
+                    <div class="flex-grow-1">
+                        <h2 class="mb-3">{{ tarea.titulo }}</h2>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <span class="badge bg-{{ 'warning' if tarea.estado == 'pendiente' else 'info' if tarea.estado == 'en_progreso' else 'success' }} fs-6">
+                                <i class="bi bi-{{ 'clock' if tarea.estado == 'pendiente' else 'play-circle' if tarea.estado == 'en_progreso' else 'check-circle' }}"></i>
+                                {{ tarea.estado|replace('_', ' ')|title }}
+                            </span>
+                            
+                            {% if tarea.prioridad %}
+                            <span class="badge priority-badge-{{ tarea.prioridad }} fs-6">
+                                {{ '🟢' if tarea.prioridad == 'baja' else '🟡' if tarea.prioridad == 'media' else '🟠' if tarea.prioridad == 'alta' else '🔴' }}
+                                Prioridad: {{ tarea.prioridad|title }}
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Descripción -->
+                <div class="mb-4">
+                    <h5 class="text-muted mb-3">
+                        <i class="bi bi-card-text"></i> Descripción
+                    </h5>
+                    {% if tarea.descripcion %}
+                    <div class="p-3 bg-light rounded">
+                        <p class="mb-0" style="white-space: pre-line;">{{ tarea.descripcion }}</p>
+                    </div>
+                    {% else %}
+                    <div class="p-3 bg-light rounded text-muted">
+                        <i class="bi bi-info-circle"></i> Sin descripción
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Archivo Adjunto -->
+                {% if tarea.archivo %}
+                <div class="mb-4">
+                    <h5 class="text-muted mb-3">
+                        <i class="bi bi-paperclip"></i> Archivo Adjunto
+                    </h5>
+                    <div class="card border-2">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div class="d-flex align-items-center gap-3">
+                                    <!-- Icono según tipo de archivo -->
+                                    {% set ext = tarea.nombre_archivo.split('.')[-1].lower() %}
+                                    {% if ext in ['jpg', 'jpeg', 'png', 'gif'] %}
+                                        <i class="bi bi-file-image text-primary fs-1"></i>
+                                    {% elif ext == 'pdf' %}
+                                        <i class="bi bi-file-pdf text-danger fs-1"></i>
+                                    {% elif ext in ['doc', 'docx'] %}
+                                        <i class="bi bi-file-word text-primary fs-1"></i>
+                                    {% elif ext in ['zip', 'rar'] %}
+                                        <i class="bi bi-file-zip text-warning fs-1"></i>
+                                    {% else %}
+                                        <i class="bi bi-file-earmark text-secondary fs-1"></i>
+                                    {% endif %}
+                                    
+                                    <div>
+                                        <h6 class="mb-1">{{ tarea.nombre_archivo }}</h6>
+                                        <small class="text-muted">Tipo: {{ ext|upper }}</small>
+                                    </div>
+                                </div>
+                                
+                                <div class="d-flex gap-2">
+                                    <a href="{{ url_for('uploaded_file', filename=tarea.archivo.split('/')[-1]) }}" 
+                                       class="btn btn-primary" target="_blank">
+                                        <i class="bi bi-download"></i> Descargar
+                                    </a>
+                                    {% if session.user_id == tarea.created_by or session.role == 'lider' %}
+                                    <form method="POST" action="{{ url_for('eliminar_archivo', id=tarea.id) }}" 
+                                          onsubmit="return confirm('¿Eliminar este archivo?')" style="display: inline;">
+                                        <button type="submit" class="btn btn-outline-danger">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <!-- Vista previa de imágenes -->
+                            {% if ext in ['jpg', 'jpeg', 'png', 'gif'] %}
+                            <div class="mt-3 text-center">
+                                <img src="{{ url_for('uploaded_file', filename=tarea.archivo.split('/')[-1]) }}" 
+                                     alt="{{ tarea.nombre_archivo }}" 
+                                     class="file-preview" 
+                                     style="max-height: 400px;">
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Cambiar Estado -->
+                <div class="mb-4">
+                    <h5 class="text-muted mb-3">
+                        <i class="bi bi-arrow-repeat"></i> Cambiar Estado
+                    </h5>
+                    <form method="POST" action="{{ url_for('actualizar_estado_tarea', id=tarea.id) }}">
+                        <div class="row g-3">
+                            <div class="col-md-8">
+                                <select name="estado" class="form-select form-select-lg">
+                                    <option value="pendiente" {% if tarea.estado == 'pendiente' %}selected{% endif %}>
+                                        ⏳ Pendiente
+                                    </option>
+                                    <option value="en_progreso" {% if tarea.estado == 'en_progreso' %}selected{% endif %}>
+                                        ▶️ En Progreso
+                                    </option>
+                                    <option value="completada" {% if tarea.estado == 'completada' %}selected{% endif %}>
+                                        ✅ Completada
+                                    </option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <button type="submit" class="btn btn-primary w-100 btn-lg">
+                                    <i class="bi bi-check-circle"></i> Actualizar
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Columna Lateral - Metadata -->
+    <div class="col-lg-4">
+        <!-- Información General -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-info-circle"></i> Información General
+            </div>
+            <div class="card-body">
+                <div class="mb-3 pb-3 border-bottom">
+                    <small class="text-muted d-block mb-1">Creada por</small>
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-person-circle fs-5 text-primary"></i>
+                        <div>
+                            <strong>{{ tarea.creador.nombre }}</strong>
+                            <br>
+                            <small class="text-muted">@{{ tarea.creador.username }}</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3 pb-3 border-bottom">
+                    <small class="text-muted d-block mb-1">Asignada a</small>
+                    {% if tarea.asignado %}
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-person-check fs-5 text-success"></i>
+                        <div>
+                            <strong>{{ tarea.asignado.nombre }}</strong>
+                            <br>
+                            <small class="text-muted">@{{ tarea.asignado.username }}</small>
+                        </div>
+                    </div>
+                    {% else %}
+                    <span class="text-muted">
+                        <i class="bi bi-dash-circle"></i> Sin asignar
+                    </span>
+                    {% endif %}
+                </div>
+
+                <div class="mb-3 pb-3 border-bottom">
+                    <small class="text-muted d-block mb-1">Fecha de creación</small>
+                    <strong>
+                        <i class="bi bi-calendar-plus"></i>
+                        {{ tarea.fecha_creacion.strftime('%d de %B, %Y') }}
+                    </strong>
+                    <br>
+                    <small class="text-muted">{{ tarea.fecha_creacion.strftime('%H:%M') }}</small>
+                </div>
+
+                {% if tarea.fecha_completada %}
+                <div class="mb-0">
+                    <small class="text-muted d-block mb-1">Fecha de completado</small>
+                    <strong class="text-success">
+                        <i class="bi bi-calendar-check"></i>
+                        {{ tarea.fecha_completada.strftime('%d de %B, %Y') }}
+                    </strong>
+                    <br>
+                    <small class="text-muted">{{ tarea.fecha_completada.strftime('%H:%M') }}</small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Acciones Rápidas -->
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-lightning"></i> Acciones Rápidas
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    {% if session.role == 'lider' %}
+                    <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#reasignarModal">
+                        <i class="bi bi-person-plus"></i> Reasignar Tarea
+                    </button>
+                    {% endif %}
+                    
+                    {% if session.user_id == tarea.created_by or session.role == 'lider' %}
+                    <form method="POST" action="{{ url_for('eliminar_tarea', id=tarea.id) }}" 
+                          onsubmit="return confirm('¿Estás seguro de eliminar esta tarea?')">
+                        <button type="submit" class="btn btn-outline-danger w-100">
+                            <i class="bi bi-trash"></i> Eliminar Tarea
+                        </button>
+                    </form>
+                    {% endif %}
+                    
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Volver al Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Editar -->
+<div class="modal fade" id="editarModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-pencil"></i> Editar Tarea
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('editar_tarea', id=tarea.id) }}" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="titulo" class="form-label">Título *</label>
+                        <input type="text" class="form-control" id="titulo" name="titulo" 
+                               value="{{ tarea.titulo }}" required maxlength="200">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="descripcion" class="form-label">Descripción</label>
+                        <textarea class="form-control" id="descripcion" name="descripcion" rows="5">{{ tarea.descripcion }}</textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="prioridad" class="form-label">Prioridad</label>
+                        <select class="form-select" id="prioridad" name="prioridad">
+                            <option value="baja" {% if tarea.prioridad == 'baja' %}selected{% endif %}>🟢 Baja</option>
+                            <option value="media" {% if tarea.prioridad == 'media' %}selected{% endif %}>🟡 Media</option>
+                            <option value="alta" {% if tarea.prioridad == 'alta' %}selected{% endif %}>🟠 Alta</option>
+                            <option value="urgente" {% if tarea.prioridad == 'urgente' %}selected{% endif %}>🔴 Urgente</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="archivo" class="form-label">
+                            Cambiar Archivo Adjunto
+                            {% if tarea.archivo %}
+                            <small class="text-muted">(actual: {{ tarea.nombre_archivo }})</small>
+                            {% endif %}
+                        </label>
+                        <input type="file" class="form-control" id="archivo" name="archivo"
+                               accept=".png,.jpg,.jpeg,.gif,.pdf,.doc,.docx,.txt,.zip,.rar">
+                        <small class="text-muted">Deja vacío si no quieres cambiar el archivo</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Reasignar (solo líderes) -->
+{% if session.role == 'lider' %}
+<div class="modal fade" id="reasignarModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-person-plus"></i> Reasignar Tarea
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('reasignar_tarea', id=tarea.id) }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Asignar a:</label>
+                        <select name="assigned_to" class="form-select" required>
+                            <option value="">Seleccionar miembro...</option>
+                            {% for miembro in miembros %}
+                            <option value="{{ miembro.id }}" {% if tarea.assigned_to == miembro.id %}selected{% endif %}>
+                                {{ miembro.nombre }} (@{{ miembro.username }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check"></i> Reasignar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -66,7 +66,12 @@
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-start mb-2">
                                     <div>
-                                        <h6 class="mb-0">{{ tarea.titulo }}</h6>
+                                        <h6 class="mb-0">
+                                            <a href="{{ url_for('detalle_tarea', id=tarea.id) }}" 
+                                               class="text-decoration-none text-dark">
+                                                {{ tarea.titulo }}
+                                            </a>
+                                        </h6>
                                         {% if tarea.prioridad %}
                                         <span class="badge bg-{{ 'success' if tarea.prioridad == 'baja' else 'warning' if tarea.prioridad == 'media' else 'danger' if tarea.prioridad == 'alta' else 'dark' }} mt-1">
                                             {{ '🟢' if tarea.prioridad == 'baja' else '🟡' if tarea.prioridad == 'media' else '🟠' if tarea.prioridad == 'alta' else '🔴' }}
@@ -78,25 +83,22 @@
                                         {{ tarea.estado|replace('_', ' ')|title }}
                                     </span>
                                 </div>
-                                <p class="text-muted small mb-2">{{ tarea.descripcion or 'Sin descripción' }}</p>
+                                <p class="text-muted small mb-2">{{ tarea.descripcion[:80] if tarea.descripcion else 'Sin descripción' }}{% if tarea.descripcion and tarea.descripcion|length > 80 %}...{% endif %}</p>
                                 {% if tarea.archivo %}
                                 <div class="mb-2">
-                                    <a href="{{ url_for('uploaded_file', filename=tarea.archivo.split('/')[-1]) }}" 
-                                       class="btn btn-sm btn-outline-primary" target="_blank">
-                                        <i class="bi bi-paperclip"></i> {{ tarea.nombre_archivo }}
-                                    </a>
+                                    <span class="badge bg-light text-dark">
+                                        <i class="bi bi-paperclip"></i> Archivo adjunto
+                                    </span>
                                 </div>
                                 {% endif %}
-                                <small class="text-muted">
-                                    <i class="bi bi-calendar"></i> {{ tarea.fecha_creacion.strftime('%d/%m/%Y') }}
-                                </small>
-                                <form method="POST" action="{{ url_for('actualizar_estado_tarea', id=tarea.id) }}" class="mt-2">
-                                    <select name="estado" class="form-select form-select-sm" onchange="this.form.submit()">
-                                        <option value="pendiente" {% if tarea.estado == 'pendiente' %}selected{% endif %}>Pendiente</option>
-                                        <option value="en_progreso" {% if tarea.estado == 'en_progreso' %}selected{% endif %}>En Progreso</option>
-                                        <option value="completada" {% if tarea.estado == 'completada' %}selected{% endif %}>Completada</option>
-                                    </select>
-                                </form>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="text-muted">
+                                        <i class="bi bi-calendar"></i> {{ tarea.fecha_creacion.strftime('%d/%m/%Y') }}
+                                    </small>
+                                    <a href="{{ url_for('detalle_tarea', id=tarea.id) }}" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye"></i> Ver
+                                    </a>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -135,8 +137,22 @@
                             {% for tarea in mis_tareas %}
                             <tr>
                                 <td>
-                                    <strong>{{ tarea.titulo }}</strong><br>
+                                    <strong>{{ tarea.titulo }}</strong>
+                                    {% if tarea.prioridad %}
+                                    <span class="badge bg-{{ 'success' if tarea.prioridad == 'baja' else 'warning' if tarea.prioridad == 'media' else 'danger' if tarea.prioridad == 'alta' else 'dark' }}">
+                                        {{ '🟢' if tarea.prioridad == 'baja' else '🟡' if tarea.prioridad == 'media' else '🟠' if tarea.prioridad == 'alta' else '🔴' }}
+                                        {{ tarea.prioridad|title }}
+                                    </span>
+                                    {% endif %}
+                                    <br>
                                     <small class="text-muted">{{ tarea.descripcion or 'Sin descripción' }}</small>
+                                    {% if tarea.archivo %}
+                                    <br>
+                                    <a href="{{ url_for('uploaded_file', filename=tarea.archivo.split('/')[-1]) }}" 
+                                       class="btn btn-sm btn-link p-0" target="_blank">
+                                        <i class="bi bi-paperclip"></i> {{ tarea.nombre_archivo }}
+                                    </a>
+                                    {% endif %}
                                 </td>
                                 <td>
                                     {% if tarea.asignado %}
